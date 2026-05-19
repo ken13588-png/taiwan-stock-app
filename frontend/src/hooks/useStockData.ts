@@ -13,7 +13,7 @@ interface StockDataState {
   error: string | null;
 }
 
-export function useStockData(symbol: string): StockDataState & { refetch: () => void } {
+export function useStockData(symbol: string, months = 3): StockDataState & { refetch: () => void } {
   const [state, setState] = useState<StockDataState>({
     history: null,
     quote: null,
@@ -29,38 +29,25 @@ export function useStockData(symbol: string): StockDataState & { refetch: () => 
 
     try {
       const [historyRes, quoteRes, analysisRes] = await Promise.allSettled([
-        axios.get<StockHistory>(`${BASE_URL}/api/stocks/history/${symbol}?months=3`),
+        axios.get<StockHistory>(`${BASE_URL}/api/stocks/history/${symbol}?months=${months}`),
         axios.get<Quote>(`${BASE_URL}/api/stocks/quote/${symbol}`),
         axios.get<AnalysisResult>(`${BASE_URL}/api/analysis/${symbol}`),
       ]);
 
-      const history =
-        historyRes.status === 'fulfilled' ? historyRes.value.data : null;
-      const quote =
-        quoteRes.status === 'fulfilled' ? quoteRes.value.data : null;
-      const analysis =
-        analysisRes.status === 'fulfilled' ? analysisRes.value.data : null;
+      const history = historyRes.status === 'fulfilled' ? historyRes.value.data : null;
+      const quote = quoteRes.status === 'fulfilled' ? quoteRes.value.data : null;
+      const analysis = analysisRes.status === 'fulfilled' ? analysisRes.value.data : null;
 
       const errors: string[] = [];
       if (historyRes.status === 'rejected') errors.push('歷史數據載入失敗');
       if (quoteRes.status === 'rejected') errors.push('即時報價載入失敗');
       if (analysisRes.status === 'rejected') errors.push('分析數據載入失敗');
 
-      setState({
-        history,
-        quote,
-        analysis,
-        loading: false,
-        error: errors.length > 0 ? errors.join('；') : null,
-      });
-    } catch (err) {
-      setState(prev => ({
-        ...prev,
-        loading: false,
-        error: '無法連線至後端伺服器，請確認 API 服務是否正在運行。',
-      }));
+      setState({ history, quote, analysis, loading: false, error: errors.length > 0 ? errors.join('；') : null });
+    } catch {
+      setState(prev => ({ ...prev, loading: false, error: '無法連線至後端伺服器。' }));
     }
-  }, [symbol]);
+  }, [symbol, months]);
 
   useEffect(() => {
     fetchData();
@@ -70,8 +57,6 @@ export function useStockData(symbol: string): StockDataState & { refetch: () => 
 }
 
 export async function fetchBatchQuotes(symbols: string[]): Promise<Quote[]> {
-  const res = await axios.get<Quote[]>(
-    `${BASE_URL}/api/stocks/batch-quotes?symbols=${symbols.join(',')}`
-  );
+  const res = await axios.get<Quote[]>(`${BASE_URL}/api/stocks/batch-quotes?symbols=${symbols.join(',')}`);
   return res.data;
 }
