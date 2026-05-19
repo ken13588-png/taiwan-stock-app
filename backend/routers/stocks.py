@@ -6,7 +6,7 @@ router = APIRouter(prefix="/api/stocks", tags=["stocks"])
 
 
 @router.get("/history/{symbol}")
-async def stock_history(symbol: str, months: int = Query(default=3, ge=1, le=12)):
+async def stock_history(symbol: str, months: int = Query(default=0, ge=0)):
     """Return OHLCV history with technical indicators."""
     try:
         data = await get_stock_history(symbol, months=months)

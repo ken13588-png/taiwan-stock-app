@@ -8,10 +8,8 @@ interface StockCardProps {
   onRemove?: () => void;
 }
 
-function formatVolume(vol: number): string {
-  if (vol >= 100_000_000) return `${(vol / 100_000_000).toFixed(1)}億`;
-  if (vol >= 10_000) return `${(vol / 10_000).toFixed(1)}萬`;
-  return vol.toLocaleString();
+function formatZhang(shares: number): string {
+  return `${Math.floor(shares / 1000).toLocaleString()}張`;
 }
 
 function formatPrice(price: number): string {
@@ -95,7 +93,7 @@ export const StockCard: React.FC<StockCardProps> = ({ quote, isSelected, onClick
       {/* Bottom row: volume + H/L */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
-          量 <span style={{ color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{formatVolume(quote.volume)}</span>
+          量 <span style={{ color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{formatZhang(quote.volume)}</span>
         </div>
         <div style={{ fontSize: '10px', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
           H <span style={{ color: 'var(--accent-green)' }}>{formatPrice(quote.high)}</span>

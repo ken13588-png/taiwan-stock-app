@@ -13,8 +13,11 @@ STOCK_NAMES: dict[str, str] = {
 FINMIND_URL = "https://api.finmindtrade.com/api/v4/data"
 
 
-async def get_stock_history(symbol: str, months: int = 3) -> list[dict]:
-    start = (datetime.today() - timedelta(days=months * 31)).strftime("%Y-%m-%d")
+async def get_stock_history(symbol: str, months: int = 0) -> list[dict]:
+    if months == 0:
+        start = "1990-01-01"
+    else:
+        start = (datetime.today() - timedelta(days=months * 31)).strftime("%Y-%m-%d")
     end = datetime.today().strftime("%Y-%m-%d")
     params = {
         "dataset": "TaiwanStockPrice",

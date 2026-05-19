@@ -118,6 +118,9 @@ export const KLineChart: React.FC<KLineChartProps> = ({ history, loading }) => {
 
   // Keep ref to display data for click handler
   const displayDataRef = useRef<OHLCVData[]>([]);
+  const rafRef = useRef<number | null>(null);
+  const isUpdatingPreviewRef = useRef(false);
+  const legendRef = useRef<HTMLDivElement>(null);
 
   // ── Init chart ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -145,8 +148,8 @@ export const KLineChart: React.FC<KLineChartProps> = ({ history, loading }) => {
     });
     candleSeriesRef.current = candle;
 
-    const vol = chart.addHistogramSeries({ priceFormat: { type: 'volume' }, priceScaleId: 'volume' });
-    chart.priceScale('volume').applyOptions({ scaleMargins: { top: 0.85, bottom: 0 } });
+    const vol = chart.addHistogramSeries({ priceFormat: { type: 'volume' }, priceScaleId: '' });
+    vol.priceScale().applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
     volumeSeriesRef.current = vol;
 
     ma5Ref.current = chart.addLineSeries({ color: '#d97706', lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
@@ -202,17 +205,46 @@ export const KLineChart: React.FC<KLineChartProps> = ({ history, loading }) => {
       }
     });
 
-    // ── Crosshair move: update preview trend line ─────────────────────────────
+    // ── Crosshair move: legend + preview trend line ───────────────────────────
     chart.subscribeCrosshairMove(param => {
+      // Update OHLCV legend
+      if (legendRef.current) {
+        const time = param.time as string | undefined;
+        if (time) {
+          const bar = displayDataRef.current.find(d => d.time === time);
+          if (bar) {
+            const up = bar.close >= bar.open;
+            const c = up ? '#1a7f37' : '#cf222e';
+            const vol = `${Math.floor(bar.volume / 1000).toLocaleString()}張`;
+            legendRef.current.innerHTML =
+              `<span style="color:#6b7585;margin-right:6px">${bar.time}</span>` +
+              `<span style="margin-right:5px">開&nbsp;<b style="color:${c}">${bar.open.toFixed(2)}</b></span>` +
+              `<span style="margin-right:5px">高&nbsp;<b style="color:#1a7f37">${bar.high.toFixed(2)}</b></span>` +
+              `<span style="margin-right:5px">低&nbsp;<b style="color:#cf222e">${bar.low.toFixed(2)}</b></span>` +
+              `<span style="margin-right:5px">收&nbsp;<b style="color:${c}">${bar.close.toFixed(2)}</b></span>` +
+              `<span>量&nbsp;<b style="color:#0969da">${vol}</b></span>`;
+          }
+        }
+      }
+
       if (drawToolRef.current !== 'trend' || !trendFirstPointRef.current || !param.point || !previewSeriesRef.current || !candleSeriesRef.current) return;
-      const price = candleSeriesRef.current.coordinateToPrice(param.point.y);
-      const time = param.time as string | undefined;
-      if (price === null || !time) return;
-      const p1 = trendFirstPointRef.current;
-      const sorted = [p1, { time, value: price }].sort((a, b) => a.time.localeCompare(b.time));
-      try {
-        previewSeriesRef.current.setData(sorted.map(p => ({ time: p.time as any, value: p.value })));
-      } catch { /* ignore if times are equal */ }
+      if (isUpdatingPreviewRef.current) return;
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = null;
+        if (!previewSeriesRef.current || !candleSeriesRef.current || !trendFirstPointRef.current || !param.point) return;
+        isUpdatingPreviewRef.current = true;
+        try {
+          const price = candleSeriesRef.current.coordinateToPrice(param.point.y);
+          const time = param.time as string | undefined;
+          if (price === null || !time) return;
+          const p1 = trendFirstPointRef.current;
+          const sorted = [p1, { time, value: price }].sort((a, b) => a.time.localeCompare(b.time));
+          previewSeriesRef.current.setData(sorted.map(p => ({ time: p.time as any, value: p.value })));
+        } catch { /* ignore */ } finally {
+          isUpdatingPreviewRef.current = false;
+        }
+      });
     });
 
     const ro = new ResizeObserver(entries => {
@@ -224,6 +256,7 @@ export const KLineChart: React.FC<KLineChartProps> = ({ history, loading }) => {
     ro.observe(containerRef.current);
 
     return () => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
       ro.disconnect();
       chart.remove();
       chartRef.current = null;
@@ -243,7 +276,7 @@ export const KLineChart: React.FC<KLineChartProps> = ({ history, loading }) => {
     const { indicators } = history;
 
     candleSeriesRef.current.setData(display.map(d => ({ time: d.time as any, open: d.open, high: d.high, low: d.low, close: d.close })));
-    volumeSeriesRef.current.setData(display.map(d => ({ time: d.time as any, value: d.volume, color: d.close >= d.open ? 'rgba(26,127,55,0.4)' : 'rgba(207,34,46,0.4)' })));
+    volumeSeriesRef.current.setData(display.map(d => ({ time: d.time as any, value: d.volume, color: d.close >= d.open ? 'rgba(26,127,55,0.7)' : 'rgba(207,34,46,0.7)' })));
 
     const buildLine = (arr: (number | null)[], times: string[]) =>
       times.map((t, i) => ({ time: t as any, value: arr[i] })).filter((p): p is { time: any; value: number } => p.value !== null && p.value !== undefined);
@@ -267,6 +300,21 @@ export const KLineChart: React.FC<KLineChartProps> = ({ history, loading }) => {
     }
 
     chartRef.current?.timeScale().fitContent();
+
+    // Show last bar in legend by default
+    const last = display[display.length - 1];
+    if (last && legendRef.current) {
+      const up = last.close >= last.open;
+      const c = up ? '#1a7f37' : '#cf222e';
+      const vol = last.volume >= 10000 ? `${(last.volume / 10000).toFixed(1)}萬` : last.volume.toLocaleString();
+      legendRef.current.innerHTML =
+        `<span style="color:#6b7585;margin-right:6px">${last.time}</span>` +
+        `<span style="margin-right:5px">開&nbsp;<b style="color:${c}">${last.open.toFixed(2)}</b></span>` +
+        `<span style="margin-right:5px">高&nbsp;<b style="color:#1a7f37">${last.high.toFixed(2)}</b></span>` +
+        `<span style="margin-right:5px">低&nbsp;<b style="color:#cf222e">${last.low.toFixed(2)}</b></span>` +
+        `<span style="margin-right:5px">收&nbsp;<b style="color:${c}">${last.close.toFixed(2)}</b></span>` +
+        `<span>量&nbsp;<b style="color:#0969da">${vol}</b></span>`;
+    }
   }, [history, timeframe]);
 
   // ── Toggle MA/BB ──────────────────────────────────────────────────────────
@@ -355,6 +403,20 @@ export const KLineChart: React.FC<KLineChartProps> = ({ history, loading }) => {
             載入中...
           </div>
         )}
+        {/* OHLCV legend — updated directly via DOM ref for performance */}
+        <div
+          ref={legendRef}
+          style={{
+            position: 'absolute', top: '6px', left: '8px', zIndex: 4,
+            display: 'flex', flexWrap: 'wrap', gap: '0px',
+            alignItems: 'center', fontSize: '11px', fontVariantNumeric: 'tabular-nums',
+            pointerEvents: 'none',
+            backgroundColor: 'rgba(255,255,255,0.82)',
+            borderRadius: '4px', padding: '2px 7px',
+            color: 'var(--text-primary)',
+          }}
+        />
+
         {drawTool !== 'none' && (
           <div style={{ position: 'absolute', top: '8px', left: '50%', transform: 'translateX(-50%)', zIndex: 5, backgroundColor: 'rgba(210,153,34,0.15)', color: 'var(--accent-yellow)', border: '1px solid rgba(210,153,34,0.4)', borderRadius: '4px', padding: '3px 10px', fontSize: '11px', pointerEvents: 'none' }}>
             {drawTool === 'hline' ? '點擊圖表設定水平線' : trendFirstPointRef.current ? '點擊第2個點完成趨勢線' : '點擊第1個點開始趨勢線'}

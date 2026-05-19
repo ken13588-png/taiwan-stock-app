@@ -13,7 +13,7 @@ interface StockDataState {
   error: string | null;
 }
 
-export function useStockData(symbol: string, months = 3): StockDataState & { refetch: () => void } {
+export function useStockData(symbol: string, months = 0): StockDataState & { refetch: () => void } {
   const [state, setState] = useState<StockDataState>({
     history: null,
     quote: null,

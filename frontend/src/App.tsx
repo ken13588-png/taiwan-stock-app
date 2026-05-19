@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Dashboard } from './components/Dashboard';
 import { StockCard } from './components/StockCard';
+import { AnalysisPanel } from './components/AnalysisPanel';
 import { useStockData, fetchBatchQuotes } from './hooks/useStockData';
 import type { Quote } from './types/stock';
 
@@ -25,9 +26,11 @@ export default function App() {
   const [watchlist, setWatchlist] = useState<string[]>(loadWatchlistFromStorage);
   const [watchlistQuotes, setWatchlistQuotes] = useState<Record<string, Quote>>({});
   const [addInput, setAddInput] = useState('');
+  const [dataRange, setDataRange] = useState<'3M' | '6M' | '1Y' | '3Y' | 'ALL'>('ALL');
   const addInputRef = useRef<HTMLInputElement>(null);
 
-  const { history, quote, analysis, loading, error, refetch } = useStockData(selectedSymbol, 6);
+  const RANGE_MONTHS: Record<string, number> = { '3M': 3, '6M': 6, '1Y': 12, '3Y': 36, 'ALL': 0 };
+  const { history, quote, analysis, loading, error, refetch } = useStockData(selectedSymbol, RANGE_MONTHS[dataRange]);
 
   // Persist watchlist
   useEffect(() => {
@@ -96,13 +99,25 @@ export default function App() {
             <div style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'flex', gap: '8px' }}>
               <span>H <span style={{ color: 'var(--accent-green)' }}>{formatPrice(quote.high)}</span></span>
               <span>L <span style={{ color: 'var(--accent-red)' }}>{formatPrice(quote.low)}</span></span>
-              <span>量 <span style={{ color: 'var(--text-primary)' }}>{quote.volume > 0 ? (quote.volume >= 10000 ? `${(quote.volume / 10000).toFixed(1)}萬` : quote.volume.toLocaleString()) : '--'}</span></span>
+              <span>量 <span style={{ color: 'var(--text-primary)' }}>{quote.volume > 0 ? `${Math.floor(quote.volume / 1000).toLocaleString()}張` : '--'}</span></span>
             </div>
           </div>
         )}
         {loading && !quote && <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>載入中...</div>}
 
         <div style={{ flex: 1 }} />
+
+        {/* Range selector */}
+        <div style={{ display: 'flex', gap: '2px', marginRight: '8px' }}>
+          {(['3M', '6M', '1Y', '3Y', 'ALL'] as const).map(r => (
+            <button key={r} onClick={() => setDataRange(r)} style={{
+              padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 500, cursor: 'pointer',
+              backgroundColor: dataRange === r ? 'rgba(9,105,218,0.15)' : 'transparent',
+              color: dataRange === r ? 'var(--accent-blue)' : 'var(--text-secondary)',
+              border: dataRange === r ? '1px solid rgba(9,105,218,0.4)' : '1px solid transparent',
+            }}>{r === 'ALL' ? '全部' : r}</button>
+          ))}
+        </div>
 
         <button onClick={refetch} style={{ padding: '4px 12px', borderRadius: '4px', backgroundColor: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border)', fontSize: '12px' }}
           onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--accent-blue)')}
@@ -176,17 +191,28 @@ export default function App() {
             </div>
           )}
           <div className="chart-container" style={{ flex: 1, overflow: 'hidden' }}>
-            <Dashboard history={history} analysis={analysis} loading={loading} />
+            <Dashboard history={history} loading={loading} />
           </div>
         </main>
 
-        {/* ── Right Sidebar: Technical Indicators ── */}
+        {/* ── Right Sidebar: Indicators + Analysis ── */}
         <aside className="sidebar-right" style={{ width: '260px', flexShrink: 0, backgroundColor: 'var(--bg-secondary)', borderLeft: '1px solid var(--border)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <div style={{ padding: '8px 12px', fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-card)' }}>
-            技術指標
-          </div>
-          <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
-            <IndicatorPanel history={history} loading={loading} />
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            {/* Technical Indicators */}
+            <div style={{ padding: '8px 12px', fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-card)', position: 'sticky', top: 0, zIndex: 1 }}>
+              技術指標
+            </div>
+            <div style={{ padding: '12px' }}>
+              <IndicatorPanel history={history} loading={loading} />
+            </div>
+
+            {/* AI Analysis */}
+            <div style={{ padding: '8px 12px', fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--border)', borderTop: '1px solid var(--border)', backgroundColor: 'var(--bg-card)', position: 'sticky', top: 0, zIndex: 1 }}>
+              技術分析
+            </div>
+            <div style={{ padding: '12px' }}>
+              <AnalysisPanel analysis={analysis} loading={loading} />
+            </div>
           </div>
         </aside>
       </div>
