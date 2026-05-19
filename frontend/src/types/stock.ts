@@ -43,11 +43,16 @@ export interface StockHistory {
   indicators: TechnicalIndicators;
 }
 
+export interface AnalysisSignal {
+  text: string;
+  type: 'bullish' | 'bearish' | 'neutral';
+}
+
 export interface AnalysisResult {
   symbol: string;
   name: string;
-  trend: '上升' | '下降' | '盤整';
-  signals: string[];
+  trend: string;
+  signals: AnalysisSignal[];
   summary: string;
-  recommendation: '買入' | '賣出' | '觀望';
+  recommendation: string;
 }

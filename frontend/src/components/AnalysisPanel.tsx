@@ -6,30 +6,21 @@ interface AnalysisPanelProps {
   loading: boolean;
 }
 
-const TREND_COLOR: Record<string, string> = {
-  上升: 'var(--accent-green)',
-  下降: 'var(--accent-red)',
-  盤整: 'var(--accent-yellow)',
-};
+function trendColor(trend: string): string {
+  if (trend.includes('上升')) return 'var(--accent-green)';
+  if (trend.includes('下降')) return 'var(--accent-red)';
+  return 'var(--accent-yellow)';
+}
 
-const REC_STYLE: Record<string, { bg: string; color: string }> = {
-  買入: { bg: 'rgba(63,185,80,0.15)', color: 'var(--accent-green)' },
-  賣出: { bg: 'rgba(248,81,73,0.15)', color: 'var(--accent-red)' },
-  觀望: { bg: 'rgba(210,153,34,0.15)', color: 'var(--accent-yellow)' },
-};
+function recStyle(rec: string): { bg: string; color: string } {
+  if (rec.includes('買入')) return { bg: 'rgba(63,185,80,0.15)', color: 'var(--accent-green)' };
+  if (rec.includes('賣出')) return { bg: 'rgba(248,81,73,0.15)', color: 'var(--accent-red)' };
+  return { bg: 'rgba(210,153,34,0.15)', color: 'var(--accent-yellow)' };
+}
 
-// Decide signal chip color: positive signals green, negative red, neutral gray
-const POSITIVE_SIGNALS = new Set([
-  '黃金交叉', 'MACD黃金交叉', 'MACD翻多', 'RSI回升', '突破年線', '強勢上漲', '突破布林上軌',
-]);
-const NEGATIVE_SIGNALS = new Set([
-  '死亡交叉', 'MACD死亡交叉', 'MACD翻空', 'RSI超買', 'RSI回落', '跌破年線',
-  '急速下跌', '跌破布林下軌',
-]);
-
-function signalColor(signal: string): { bg: string; color: string } {
-  if (POSITIVE_SIGNALS.has(signal)) return { bg: 'rgba(63,185,80,0.15)', color: 'var(--accent-green)' };
-  if (NEGATIVE_SIGNALS.has(signal)) return { bg: 'rgba(248,81,73,0.15)', color: 'var(--accent-red)' };
+function signalChipColor(type: string): { bg: string; color: string } {
+  if (type === 'bullish') return { bg: 'rgba(63,185,80,0.15)', color: 'var(--accent-green)' };
+  if (type === 'bearish') return { bg: 'rgba(248,81,73,0.15)', color: 'var(--accent-red)' };
   return { bg: 'rgba(139,148,158,0.15)', color: 'var(--text-secondary)' };
 }
 
@@ -70,8 +61,8 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, loading 
     );
   }
 
-  const trendColor = TREND_COLOR[analysis.trend] || 'var(--text-secondary)';
-  const recStyle = REC_STYLE[analysis.recommendation] || { bg: 'transparent', color: 'var(--text-secondary)' };
+  const tc = trendColor(analysis.trend);
+  const rs = recStyle(analysis.recommendation);
 
   return (
     <div style={{ padding: '12px 16px', height: '100%', overflowY: 'auto' }}>
@@ -83,9 +74,9 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, loading 
             style={{
               padding: '2px 10px',
               borderRadius: '4px',
-              backgroundColor: `${trendColor}22`,
-              color: trendColor,
-              border: `1px solid ${trendColor}55`,
+              backgroundColor: 'rgba(0,0,0,0.3)',
+              color: tc,
+              border: `1px solid ${tc}`,
               fontSize: '12px',
               fontWeight: 600,
             }}
@@ -99,9 +90,9 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, loading 
             style={{
               padding: '3px 14px',
               borderRadius: '4px',
-              backgroundColor: recStyle.bg,
-              color: recStyle.color,
-              border: `1px solid ${recStyle.color}55`,
+              backgroundColor: rs.bg,
+              color: rs.color,
+              border: `1px solid ${rs.color}`,
               fontSize: '13px',
               fontWeight: 700,
             }}
@@ -117,7 +108,7 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, loading 
           <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '6px' }}>技術訊號</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
             {analysis.signals.map((signal, idx) => {
-              const { bg, color } = signalColor(signal);
+              const { bg, color } = signalChipColor(signal.type);
               return (
                 <span
                   key={idx}
@@ -126,12 +117,12 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, loading 
                     borderRadius: '3px',
                     backgroundColor: bg,
                     color,
-                    border: `1px solid ${color}44`,
+                    border: `1px solid ${color}`,
                     fontSize: '11px',
                     fontWeight: 500,
                   }}
                 >
-                  {signal}
+                  {signal.text}
                 </span>
               );
             })}
