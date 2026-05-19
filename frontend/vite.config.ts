@@ -11,8 +11,8 @@ export default defineConfig({
         name: '台股分析系統',
         short_name: '台股分析',
         description: '專業台灣股票技術分析工具',
-        theme_color: '#0d1117',
-        background_color: '#0d1117',
+        theme_color: '#f4f6f9',
+        background_color: '#f4f6f9',
         display: 'standalone',
         orientation: 'any',
         icons: [
@@ -20,7 +20,9 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}']
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        skipWaiting: true,
+        clientsClaim: true,
       }
     })
   ],
