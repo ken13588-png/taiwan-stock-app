@@ -124,24 +124,24 @@ export const KLineChart: React.FC<KLineChartProps> = ({ history, loading }) => {
     if (!containerRef.current) return;
 
     const chart = createChart(containerRef.current, {
-      layout: { background: { type: ColorType.Solid, color: '#0d1117' }, textColor: '#8b949e', fontSize: 11 },
-      grid: { vertLines: { color: '#1c2128' }, horzLines: { color: '#1c2128' } },
+      layout: { background: { type: ColorType.Solid, color: '#ffffff' }, textColor: '#6b7585', fontSize: 11 },
+      grid: { vertLines: { color: '#eef1f6' }, horzLines: { color: '#eef1f6' } },
       crosshair: {
         mode: CrosshairMode.Normal,
-        vertLine: { color: '#58a6ff', style: LineStyle.Dashed, width: 1, labelBackgroundColor: '#161b22' },
-        horzLine: { color: '#58a6ff', style: LineStyle.Dashed, width: 1, labelBackgroundColor: '#161b22' },
+        vertLine: { color: '#0969da', style: LineStyle.Dashed, width: 1, labelBackgroundColor: '#1a1f2e' },
+        horzLine: { color: '#0969da', style: LineStyle.Dashed, width: 1, labelBackgroundColor: '#1a1f2e' },
       },
-      rightPriceScale: { borderColor: '#30363d' },
-      timeScale: { borderColor: '#30363d', timeVisible: true, secondsVisible: false, rightOffset: 10, barSpacing: 8 },
+      rightPriceScale: { borderColor: '#dde1e9' },
+      timeScale: { borderColor: '#dde1e9', timeVisible: true, secondsVisible: false, rightOffset: 10, barSpacing: 8 },
       width: containerRef.current.clientWidth,
       height: containerRef.current.clientHeight,
     });
     chartRef.current = chart;
 
     const candle = chart.addCandlestickSeries({
-      upColor: '#3fb950', downColor: '#f85149',
-      borderUpColor: '#3fb950', borderDownColor: '#f85149',
-      wickUpColor: '#3fb950', wickDownColor: '#f85149',
+      upColor: '#1a7f37', downColor: '#cf222e',
+      borderUpColor: '#1a7f37', borderDownColor: '#cf222e',
+      wickUpColor: '#1a7f37', wickDownColor: '#cf222e',
     });
     candleSeriesRef.current = candle;
 
@@ -149,13 +149,13 @@ export const KLineChart: React.FC<KLineChartProps> = ({ history, loading }) => {
     chart.priceScale('volume').applyOptions({ scaleMargins: { top: 0.85, bottom: 0 } });
     volumeSeriesRef.current = vol;
 
-    ma5Ref.current = chart.addLineSeries({ color: '#d29922', lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
-    ma20Ref.current = chart.addLineSeries({ color: '#58a6ff', lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
-    ma60Ref.current = chart.addLineSeries({ color: '#db6d28', lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
+    ma5Ref.current = chart.addLineSeries({ color: '#d97706', lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
+    ma20Ref.current = chart.addLineSeries({ color: '#2563eb', lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
+    ma60Ref.current = chart.addLineSeries({ color: '#dc2626', lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
 
-    bbUpperRef.current = chart.addLineSeries({ color: 'rgba(188,140,255,0.6)', lineWidth: 1, lineStyle: LineStyle.Dashed, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
-    bbMiddleRef.current = chart.addLineSeries({ color: 'rgba(188,140,255,0.4)', lineWidth: 1, lineStyle: LineStyle.Dashed, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
-    bbLowerRef.current = chart.addLineSeries({ color: 'rgba(188,140,255,0.6)', lineWidth: 1, lineStyle: LineStyle.Dashed, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
+    bbUpperRef.current = chart.addLineSeries({ color: 'rgba(124,58,237,0.7)', lineWidth: 1, lineStyle: LineStyle.Dashed, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
+    bbMiddleRef.current = chart.addLineSeries({ color: 'rgba(124,58,237,0.4)', lineWidth: 1, lineStyle: LineStyle.Dashed, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
+    bbLowerRef.current = chart.addLineSeries({ color: 'rgba(124,58,237,0.7)', lineWidth: 1, lineStyle: LineStyle.Dashed, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
 
     // ── Drawing: click handler ────────────────────────────────────────────────
     chart.subscribeClick(param => {
@@ -243,7 +243,7 @@ export const KLineChart: React.FC<KLineChartProps> = ({ history, loading }) => {
     const { indicators } = history;
 
     candleSeriesRef.current.setData(display.map(d => ({ time: d.time as any, open: d.open, high: d.high, low: d.low, close: d.close })));
-    volumeSeriesRef.current.setData(display.map(d => ({ time: d.time as any, value: d.volume, color: d.close >= d.open ? 'rgba(63,185,80,0.45)' : 'rgba(248,81,73,0.45)' })));
+    volumeSeriesRef.current.setData(display.map(d => ({ time: d.time as any, value: d.volume, color: d.close >= d.open ? 'rgba(26,127,55,0.4)' : 'rgba(207,34,46,0.4)' })));
 
     const buildLine = (arr: (number | null)[], times: string[]) =>
       times.map((t, i) => ({ time: t as any, value: arr[i] })).filter((p): p is { time: any; value: number } => p.value !== null && p.value !== undefined);
@@ -326,9 +326,9 @@ export const KLineChart: React.FC<KLineChartProps> = ({ history, loading }) => {
 
         {showMA && timeframe === '1D' && (
           <div style={{ display: 'flex', gap: '10px', marginLeft: '4px' }}>
-            <span style={{ fontSize: '11px', color: '#d29922' }}>● MA5</span>
-            <span style={{ fontSize: '11px', color: '#58a6ff' }}>● MA20</span>
-            <span style={{ fontSize: '11px', color: '#db6d28' }}>● MA60</span>
+            <span style={{ fontSize: '11px', color: '#d97706' }}>● MA5</span>
+            <span style={{ fontSize: '11px', color: '#2563eb' }}>● MA20</span>
+            <span style={{ fontSize: '11px', color: '#dc2626' }}>● MA60</span>
           </div>
         )}
         {showBB && timeframe === '1D' && (
@@ -351,7 +351,7 @@ export const KLineChart: React.FC<KLineChartProps> = ({ history, loading }) => {
       {/* Chart */}
       <div style={{ flex: 1, position: 'relative', cursor: chartCursor }}>
         {loading && (
-          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(13,17,23,0.75)', zIndex: 10, fontSize: '13px', color: 'var(--text-secondary)' }}>
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(244,246,249,0.88)', zIndex: 10, fontSize: '13px', color: 'var(--text-secondary)' }}>
             載入中...
           </div>
         )}
