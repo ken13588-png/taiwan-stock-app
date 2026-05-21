@@ -44,6 +44,19 @@ async def stock_history(symbol: str, months: int = Query(default=0, ge=0)):
     }
 
 
+@router.get("/search")
+async def search_stocks(q: str = Query(..., min_length=1)):
+    """Search stocks by symbol or name prefix."""
+    from services.twse import STOCK_NAMES
+    q_lower = q.lower()
+    results = [
+        {"symbol": sym, "name": name}
+        for sym, name in STOCK_NAMES.items()
+        if q_lower in sym or q_lower in name
+    ]
+    return results[:10]
+
+
 @router.get("/quote/{symbol}")
 async def stock_quote(symbol: str):
     """Return real-time or latest quote for a stock."""

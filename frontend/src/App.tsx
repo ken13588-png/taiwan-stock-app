@@ -26,8 +26,13 @@ export default function App() {
   const [watchlist, setWatchlist] = useState<string[]>(loadWatchlistFromStorage);
   const [watchlistQuotes, setWatchlistQuotes] = useState<Record<string, Quote>>({});
   const [addInput, setAddInput] = useState('');
+  const [suggestions, setSuggestions] = useState<{ symbol: string; name: string }[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestionIdx, setSuggestionIdx] = useState(-1);
   const [dataRange, setDataRange] = useState<'3M' | '6M' | '1Y' | '3Y' | 'ALL'>('ALL');
   const addInputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const RANGE_MONTHS: Record<string, number> = { '3M': 3, '6M': 6, '1Y': 12, '3Y': 36, 'ALL': 0 };
   const { history, quote, analysis, loading, error, refetch } = useStockData(selectedSymbol, RANGE_MONTHS[dataRange]);
@@ -37,11 +42,51 @@ export default function App() {
     localStorage.setItem(LS_KEY, JSON.stringify(watchlist));
   }, [watchlist]);
 
-  const addStock = () => {
-    const sym = addInput.trim().toUpperCase();
-    if (!sym || watchlist.includes(sym)) { setAddInput(''); return; }
+  const addStock = (symbol?: string) => {
+    const sym = (symbol ?? addInput).trim().toUpperCase();
+    if (!sym || watchlist.includes(sym)) { setAddInput(''); setSuggestions([]); setShowSuggestions(false); return; }
     setWatchlist(prev => [...prev, sym]);
+    setSelectedSymbol(sym);
     setAddInput('');
+    setSuggestions([]);
+    setShowSuggestions(false);
+    setSuggestionIdx(-1);
+  };
+
+  const handleAddInputChange = (val: string) => {
+    setAddInput(val);
+    setSuggestionIdx(-1);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    if (!val.trim()) { setSuggestions([]); setShowSuggestions(false); return; }
+    searchTimerRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/stocks/search?q=${encodeURIComponent(val.trim())}`);
+        if (res.ok) {
+          const data = await res.json();
+          setSuggestions(data);
+          setShowSuggestions(data.length > 0);
+        }
+      } catch { /* ignore */ }
+    }, 200);
+  };
+
+  const handleAddInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSuggestionIdx(i => Math.min(i + 1, suggestions.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSuggestionIdx(i => Math.max(i - 1, -1));
+    } else if (e.key === 'Enter') {
+      if (suggestionIdx >= 0 && suggestions[suggestionIdx]) {
+        addStock(suggestions[suggestionIdx].symbol);
+      } else {
+        addStock();
+      }
+    } else if (e.key === 'Escape') {
+      setShowSuggestions(false);
+      setSuggestionIdx(-1);
+    }
   };
 
   const removeStock = (symbol: string) => {
@@ -154,26 +199,56 @@ export default function App() {
           </div>
 
           {/* Add stock input */}
-          <div style={{ padding: '8px 12px', borderTop: '1px solid var(--border)', display: 'flex', gap: '6px' }}>
+          <div style={{ padding: '8px 12px', borderTop: '1px solid var(--border)', display: 'flex', gap: '6px', position: 'relative' }}>
             <input
               ref={addInputRef}
               value={addInput}
-              onChange={e => setAddInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && addStock()}
-              placeholder="輸入代號 Enter"
-              maxLength={6}
+              onChange={e => handleAddInputChange(e.target.value)}
+              onKeyDown={handleAddInputKeyDown}
+              onFocus={() => addInput.trim() && suggestions.length > 0 && setShowSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+              placeholder="代號或名稱搜尋"
+              maxLength={10}
               style={{
                 flex: 1, padding: '5px 8px', borderRadius: '4px', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border)', fontSize: '12px', outline: 'none', fontFamily: 'inherit',
               }}
-              onFocus={e => (e.currentTarget.style.borderColor = 'var(--accent-blue)')}
-              onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+              onFocusCapture={e => (e.currentTarget.style.borderColor = 'var(--accent-blue)')}
+              onBlurCapture={e => (e.currentTarget.style.borderColor = 'var(--border)')}
             />
             <button
-              onClick={addStock}
+              onClick={() => addStock()}
               style={{ padding: '5px 10px', borderRadius: '4px', backgroundColor: 'rgba(88,166,255,0.15)', color: 'var(--accent-blue)', border: '1px solid rgba(88,166,255,0.3)', fontSize: '12px', cursor: 'pointer' }}
             >
               ＋
             </button>
+            {/* Suggestions dropdown */}
+            {showSuggestions && suggestions.length > 0 && (
+              <div
+                ref={suggestionsRef}
+                style={{
+                  position: 'absolute', bottom: '100%', left: '12px', right: '12px',
+                  backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)',
+                  borderRadius: '6px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                  zIndex: 100, overflow: 'hidden', marginBottom: '4px',
+                }}
+              >
+                {suggestions.map((s, i) => (
+                  <div
+                    key={s.symbol}
+                    onMouseDown={() => addStock(s.symbol)}
+                    style={{
+                      padding: '7px 10px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      backgroundColor: i === suggestionIdx ? 'rgba(88,166,255,0.12)' : 'transparent',
+                      borderBottom: i < suggestions.length - 1 ? '1px solid var(--border)' : 'none',
+                    }}
+                    onMouseEnter={() => setSuggestionIdx(i)}
+                  >
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>{s.symbol}</span>
+                    <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{s.name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Market status */}
