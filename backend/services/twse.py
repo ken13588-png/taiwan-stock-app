@@ -1,7 +1,11 @@
 from __future__ import annotations
 import httpx
+import logging
+import os
 import time
 from datetime import datetime, timedelta
+
+logger = logging.getLogger(__name__)
 
 STOCK_NAMES: dict[str, str] = {
     "2330": "台積電", "2317": "鴻海", "2454": "聯發科", "2382": "廣達",
@@ -21,17 +25,25 @@ FRESHNESS = 300  # Re-check for new bars every 5 minutes
 
 
 async def _fetch_rows(symbol: str, start: str, end: str) -> list[dict]:
-    params = {
+    token = os.getenv("FINMIND_TOKEN", "")
+    params: dict = {
         "dataset": "TaiwanStockPrice",
         "data_id": symbol,
         "start_date": start,
         "end_date": end,
     }
+    if token:
+        params["token"] = token
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=60.0) as client:
             resp = await client.get(FINMIND_URL, params=params)
             resp.raise_for_status()
-            rows = resp.json().get("data", [])
+            body = resp.json()
+            # FinMind returns status!=200 for quota exceeded
+            if body.get("status") != 200:
+                logger.warning("FinMind error %s: %s", body.get("status"), body.get("msg"))
+                return []
+            rows = body.get("data", [])
             return [
                 {
                     "time":   r["date"],
@@ -43,7 +55,8 @@ async def _fetch_rows(symbol: str, start: str, end: str) -> list[dict]:
                 }
                 for r in rows
             ]
-    except Exception:
+    except Exception as e:
+        logger.error("_fetch_rows %s %s-%s failed: %s", symbol, start, end, e)
         return []
 
 
@@ -73,8 +86,9 @@ async def _ensure_full_history(symbol: str) -> list[dict]:
         _full_history[symbol] = (data, time.time())
         return data
 
-    # First time for this symbol: fetch all history from listing date
-    data = await _fetch_rows(symbol, "1990-01-01", today)
+    # First time for this symbol: fetch up to 5 years (free tier friendly)
+    five_years_ago = (datetime.today() - timedelta(days=5 * 365)).strftime("%Y-%m-%d")
+    data = await _fetch_rows(symbol, five_years_ago, today)
     _full_history[symbol] = (data, time.time())
     return data
 
