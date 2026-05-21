@@ -44,6 +44,27 @@ async def stock_history(symbol: str, months: int = Query(default=0, ge=0)):
     }
 
 
+@router.get("/debug-finmind")
+async def debug_finmind():
+    """Debug: directly call FinMind and return raw response."""
+    import os
+    from datetime import datetime, timedelta
+    token = os.getenv("FINMIND_TOKEN", "")
+    today = datetime.today().strftime("%Y-%m-%d")
+    start = (datetime.today() - timedelta(days=30)).strftime("%Y-%m-%d")
+    params = {"dataset": "TaiwanStockPrice", "data_id": "2330", "start_date": start, "end_date": today}
+    if token:
+        params["token"] = token
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.get("https://api.finmindtrade.com/api/v4/data", params=params)
+            body = resp.json()
+            return {"http_status": resp.status_code, "finmind_status": body.get("status"), "msg": body.get("msg"), "data_count": len(body.get("data", [])), "has_token": bool(token)}
+    except Exception as e:
+        return {"error": str(e)}
+
+
 @router.get("/search")
 async def search_stocks(q: str = Query(..., min_length=1)):
     """Search stocks by symbol or name prefix."""
