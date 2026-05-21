@@ -69,9 +69,11 @@ async def _ensure_full_history(symbol: str) -> list[dict]:
 
         # Still fresh — return immediately, no API call
         if time.time() - last_checked < FRESHNESS:
-            return data
+            if data:  # only skip refetch if we actually have data
+                return data
+            # Empty cache that's still "fresh" — fall through to refetch
 
-        # Stale: only fetch from last known date forward
+        # Stale with data: only fetch from last known date forward
         if data:
             last_date = data[-1]["time"]
             if last_date < today:
@@ -82,9 +84,10 @@ async def _ensure_full_history(symbol: str) -> list[dict]:
                     _full_history[symbol] = (merged, time.time())
                     return merged
 
-        # No new data or fetch failed — update timestamp to avoid hammering API
-        _full_history[symbol] = (data, time.time())
-        return data
+            # No new data — update timestamp to avoid hammering API
+            _full_history[symbol] = (data, time.time())
+            return data
+        # else: cached empty — fall through to full refetch
 
     # First time for this symbol: fetch up to 5 years (free tier friendly)
     five_years_ago = (datetime.today() - timedelta(days=5 * 365)).strftime("%Y-%m-%d")
